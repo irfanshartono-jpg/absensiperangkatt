@@ -1,0 +1,2051 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Absensi Perangkat Desa - Pemerintah Desa Kedungmakam, Jatirogo, Tuban</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: {
+                            800: '#1e3a8a',
+                            900: '#0f2350',
+                            950: '#091533',
+                        },
+                        gold: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+        /* Styling khusus mode cetak / Print View */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printArea, #printArea * {
+                visibility: visible;
+            }
+            #printArea {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            @page {
+                size: A4 portrait;
+                margin: 15mm;
+            }
+        }
+        /* Animasi pulse radar lokasi */
+        @keyframes radarPulse {
+            0% { transform: scale(0.95); opacity: 0.7; }
+            70% { transform: scale(1.3); opacity: 0; }
+            100% { transform: scale(0.95); opacity: 0; }
+        }
+        .radar-ring {
+            animation: radarPulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Custom Toast / Message Notification Container (Pengganti alert) -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- Custom Confirm Modal (Pengganti confirm) -->
+    <div id="confirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-100 transform transition-all">
+            <div class="flex items-center gap-3 text-amber-600 mb-3">
+                <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                </div>
+                <h3 id="confirmTitle" class="text-lg font-bold text-slate-900">Konfirmasi Tindakan</h3>
+            </div>
+            <p id="confirmMessage" class="text-sm text-slate-600 mb-6 leading-relaxed">Apakah Anda yakin ingin melanjutkan?</p>
+            <div class="flex justify-end gap-3">
+                <button id="confirmCancelBtn" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">Batal</button>
+                <button id="confirmOkBtn" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-navy-900 hover:bg-navy-800 transition shadow-sm">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 1. HALAMAN LOGIN ==================== -->
+    <div id="loginSection" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-navy-950 via-navy-900 to-blue-900">
+        <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-white/10">
+            <!-- Header Instansi -->
+            <div class="bg-navy-900 text-white p-6 text-center relative overflow-hidden border-b-4 border-gold-500">
+                <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/5"></div>
+                <div class="absolute -left-8 -bottom-8 w-24 h-24 rounded-full bg-gold-500/10"></div>
+                
+                <div class="relative z-10 flex flex-col items-center">
+                    <div class="w-20 h-20 rounded-2xl bg-white p-2 shadow-lg mb-3 flex items-center justify-center">
+                        <img id="loginLogoImg" src="" alt="Logo Kabupaten Tuban" class="w-full h-full object-contain">
+                    </div>
+                    <p class="text-[11px] font-bold tracking-widest uppercase text-gold-400">Pemerintah Kabupaten Tuban</p>
+                    <p class="text-xs font-semibold tracking-wider uppercase text-blue-200">Kecamatan Jatirogo</p>
+                    <h1 class="text-lg sm:text-xl font-extrabold tracking-tight uppercase mt-0.5">Pemerintah Desa Kedungmakam</h1>
+                    <span class="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-blue-100 border border-white/15">
+                        <i class="fa-solid fa-location-dot text-gold-400"></i> Sistem Presensi Masuk Perangkat Desa
+                    </span>
+                </div>
+            </div>
+
+            <!-- Form Login -->
+            <div class="p-6 sm:p-8">
+                <!-- Tab Role Selector -->
+                <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl mb-6">
+                    <button type="button" onclick="setLoginRole('pegawai')" id="tabRolePegawai" class="py-2.5 text-sm font-bold rounded-lg transition flex items-center justify-center gap-2 bg-white text-navy-900 shadow-sm">
+                        <i class="fa-solid fa-user-tie"></i> Perangkat Desa
+                    </button>
+                    <button type="button" onclick="setLoginRole('admin')" id="tabRoleAdmin" class="py-2.5 text-sm font-semibold rounded-lg transition flex items-center justify-center gap-2 text-slate-500 hover:text-slate-700">
+                        <i class="fa-solid fa-user-shield"></i> Admin Desa
+                    </button>
+                </div>
+
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Username / NIPD</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                                <i class="fa-solid fa-id-badge"></i>
+                            </span>
+                            <input type="text" id="loginUsername" required placeholder="Masukkan username..." class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-800 focus:bg-white transition">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Kata Sandi</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                                <i class="fa-solid fa-lock"></i>
+                            </span>
+                            <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-800 focus:bg-white transition">
+                            <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600">
+                                <i id="eyeIcon" class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full py-3.5 bg-navy-900 hover:bg-navy-800 text-white font-bold rounded-xl shadow-lg shadow-navy-900/20 transition flex items-center justify-center gap-2 text-sm mt-2">
+                        <span>Masuk ke Sistem</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+
+                <!-- Info ID Perangkat HP -->
+                <div class="mt-5 p-3 bg-blue-50/70 border border-blue-100 rounded-xl flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-2 text-navy-900">
+                        <i class="fa-solid fa-mobile-screen-button text-blue-600 text-base"></i>
+                        <div>
+                            <span class="font-semibold block">ID Perangkat Browser Ini:</span>
+                            <span id="loginDeviceIdBadge" class="font-mono text-[11px] text-slate-600">DEV-LOADING</span>
+                        </div>
+                    </div>
+                    <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 font-semibold rounded-md text-[10px]">1 HP / Akun</span>
+                </div>
+
+                <!-- Box Akun Demo -->
+                <div class="mt-5 pt-4 border-t border-slate-100">
+                    <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-info text-gold-500"></i> Akun Uji Coba Cepat (Klik untuk isi):
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                        <button type="button" onclick="fillDemoLogin('admin', 'admin123', 'admin')" class="p-2 text-left rounded-lg border border-slate-200 hover:border-navy-800 hover:bg-slate-50 transition">
+                            <span class="font-bold text-navy-900 block">Admin Desa</span>
+                            <span class="text-[11px] text-slate-500 font-mono">admin / admin123</span>
+                        </button>
+                        <button type="button" onclick="fillDemoLogin('kades', '123456', 'pegawai')" class="p-2 text-left rounded-lg border border-slate-200 hover:border-navy-800 hover:bg-slate-50 transition">
+                            <span class="font-bold text-slate-800 block">Kepala Desa</span>
+                            <span class="text-[11px] text-slate-500 font-mono">kades / 123456</span>
+                        </button>
+                        <button type="button" onclick="fillDemoLogin('sekdes', '123456', 'pegawai')" class="p-2 text-left rounded-lg border border-slate-200 hover:border-navy-800 hover:bg-slate-50 transition">
+                            <span class="font-bold text-slate-800 block">Sekretaris Desa</span>
+                            <span class="text-[11px] text-slate-500 font-mono">sekdes / 123456</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 2. APLIKASI UTAMA (DASHBOARD) ==================== -->
+    <div id="mainAppSection" class="hidden flex-col min-h-screen">
+        
+        <!-- Top Navigation Bar -->
+        <header class="bg-navy-900 text-white shadow-md sticky top-0 z-30 border-b-2 border-gold-500 no-print">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center shrink-0 shadow">
+                        <img id="navLogoImg" src="" alt="Logo Tuban" class="w-full h-full object-contain">
+                    </div>
+                    <div class="leading-tight">
+                        <h1 class="font-extrabold text-sm sm:text-base tracking-tight uppercase">Desa Kedungmakam</h1>
+                        <p class="text-[11px] text-gold-400 font-medium">Kec. Jatirogo - Kab. Tuban</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 sm:gap-4">
+                    <div class="hidden md:flex flex-col text-right">
+                        <span id="navUserName" class="text-sm font-bold text-white">Nama Pengguna</span>
+                        <span id="navUserRole" class="text-[11px] text-blue-200">Jabatan</span>
+                    </div>
+                    <button onclick="logout()" class="px-3.5 py-2 rounded-xl bg-red-600/90 hover:bg-red-600 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        <span class="hidden sm:inline">Keluar</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- ==================== VIEW PEGAWAI (PERANGKAT DESA) ==================== -->
+        <main id="pegawaiDashboard" class="hidden flex-1 max-w-3xl w-full mx-auto p-4 sm:p-6 space-y-6">
+            
+            <!-- Kartu Profil & Jam Real-time -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-5 sm:p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-14 h-14 rounded-2xl bg-navy-900 text-gold-400 flex items-center justify-center text-xl font-extrabold shadow-inner shrink-0" id="pegawaiAvatar">
+                            KD
+                        </div>
+                        <div>
+                            <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-navy-800 mb-1" id="pegawaiJabatanBadge">Kepala Desa</span>
+                            <h2 class="text-lg font-extrabold text-slate-900" id="pegawaiFullName">Nama Perangkat Desa</h2>
+                            <p class="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                <i class="fa-solid fa-mobile-screen text-emerald-600"></i>
+                                <span>Perangkat Terdaftar: <strong id="pegawaiBoundDevice" class="font-mono text-slate-700">Belum Terkunci</strong></span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 rounded-2xl p-3 sm:text-right border border-slate-100">
+                        <div id="liveClock" class="text-2xl font-extrabold text-navy-900 font-mono tracking-tight">07:30:00</div>
+                        <div id="liveDate" class="text-xs font-medium text-slate-500">Senin, 24 November 2026</div>
+                    </div>
+                </div>
+
+                <!-- Status Lokasi GPS & Validasi Radius -->
+                <div class="mt-5 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                            <i class="fa-solid fa-satellite-dish text-navy-800"></i> Validasi Lokasi Balai Desa Kedungmakam
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="simulateOfficeLocation()" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition" title="Gunakan untuk uji coba dari laptop/luar kantor">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Simulasi di Kantor
+                            </button>
+                            <button type="button" onclick="refreshGPS()" class="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-blue-50 text-navy-800 border border-blue-200 hover:bg-blue-100 transition">
+                                <i class="fa-solid fa-rotate"></i> Cek GPS
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Box Informasi Jarak -->
+                    <div id="gpsStatusCard" class="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex items-start gap-3">
+                            <div class="relative flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-navy-800 shrink-0 mt-0.5">
+                                <span class="absolute w-full h-full rounded-full bg-blue-400 radar-ring"></span>
+                                <i class="fa-solid fa-location-crosshairs relative z-10"></i>
+                            </div>
+                            <div>
+                                <p id="gpsStatusText" class="text-sm font-bold text-slate-800">Mendeteksi koordinat GPS...</p>
+                                <p id="gpsCoordsText" class="text-xs font-mono text-slate-500 mt-0.5">Lat: -, Lng: -</p>
+                                <p class="text-[11px] text-slate-500 mt-1">
+                                    Batas Radius Kantor: <strong id="officeRadiusDisplay" class="text-slate-700">100 meter</strong> • Jam Masuk Maksimal: <strong id="officeMaxTimeDisplay" class="text-slate-700">08:00</strong>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="sm:text-right shrink-0">
+                            <span class="text-[11px] uppercase font-bold text-slate-400 block">Jarak Anda</span>
+                            <span id="distanceBadge" class="inline-block mt-0.5 px-3 py-1 rounded-xl text-sm font-extrabold bg-slate-200 text-slate-700">
+                                Menghitung...
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Area Tombol Absen Masuk (Hanya Masuk Saja) -->
+                    <div id="attendanceActionBox" class="pt-2">
+                        <!-- Diisi dinamis oleh JS: Tombol Absen Masuk atau Kartu Sudah Absen Hari Ini -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Riwayat Absensi Pribadi Bulan Ini -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-200/80 p-5 sm:p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-base font-extrabold text-slate-900">Riwayat Presensi Masuk Saya</h3>
+                        <p class="text-xs text-slate-500">Catatan kehadiran masuk Anda pada bulan berjalan</p>
+                    </div>
+                    <span id="pegawaiMonthTotal" class="px-3 py-1 rounded-full text-xs font-bold bg-navy-900 text-white">0 Hari Hadir</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500">
+                                <th class="py-3 px-3">Tanggal</th>
+                                <th class="py-3 px-3">Jam Masuk</th>
+                                <th class="py-3 px-3">Jarak</th>
+                                <th class="py-3 px-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pegawaiHistoryTableBody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Diisi via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- ==================== VIEW ADMIN DESA ==================== -->
+        <main id="adminDashboard" class="hidden flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+            
+            <!-- Navigasi Tab Admin -->
+            <div class="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-wrap gap-1.5 no-print">
+                <button onclick="switchAdminTab('ringkasan')" id="adminTabBtn-ringkasan" class="admin-tab-btn flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 bg-navy-900 text-white shadow-sm">
+                    <i class="fa-solid fa-chart-pie"></i> Ringkasan & Hari Ini
+                </button>
+                <button onclick="switchAdminTab('laporan')" id="adminTabBtn-laporan" class="admin-tab-btn flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-100">
+                    <i class="fa-solid fa-file-lines"></i> Laporan & Cetak
+                </button>
+                <button onclick="switchAdminTab('pegawai')" id="adminTabBtn-pegawai" class="admin-tab-btn flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-100">
+                    <i class="fa-solid fa-users-gear"></i> Data Perangkat & HP
+                </button>
+                <button onclick="switchAdminTab('pengaturan')" id="adminTabBtn-pengaturan" class="admin-tab-btn flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-100">
+                    <i class="fa-solid fa-sliders"></i> Pengaturan Desa & Logo
+                </button>
+            </div>
+
+            <!-- TAB 1: RINGKASAN & KEHADIRAN HARI INI -->
+            <section id="adminTab-ringkasan" class="space-y-6">
+                <!-- Stat Cards -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500 uppercase">Total Perangkat</span>
+                            <div class="w-9 h-9 rounded-xl bg-blue-50 text-navy-800 flex items-center justify-center"><i class="fa-solid fa-users"></i></div>
+                        </div>
+                        <p id="statTotalPegawai" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2">0</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Perangkat Desa Aktif</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500 uppercase">Hadir Tepat Waktu</span>
+                            <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fa-solid fa-circle-check"></i></div>
+                        </div>
+                        <p id="statTepatWaktu" class="text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-2">0</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Hari ini (&le; batas jam)</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500 uppercase">Terlambat</span>
+                            <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-clock"></i></div>
+                        </div>
+                        <p id="statTerlambat" class="text-2xl sm:text-3xl font-extrabold text-amber-600 mt-2">0</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Hari ini (&gt; batas jam)</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-500 uppercase">Belum Absen</span>
+                            <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center"><i class="fa-solid fa-user-xmark"></i></div>
+                        </div>
+                        <p id="statBelumAbsen" class="text-2xl sm:text-3xl font-extrabold text-rose-600 mt-2">0</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Belum presensi masuk</p>
+                    </div>
+                </div>
+
+                <!-- Tabel Monitoring Hari Ini + Input Manual Izin/Sakit -->
+                <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                    <div class="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-base sm:text-lg font-extrabold text-slate-900">Monitoring Presensi Masuk Hari Ini</h2>
+                            <p id="todayMonitoringDate" class="text-xs text-slate-500">Tanggal: -</p>
+                        </div>
+                        <button onclick="openManualAttendanceModal()" class="px-4 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-800 text-white text-xs font-bold transition flex items-center gap-2 self-start sm:self-auto">
+                            <i class="fa-solid fa-plus"></i> Catat Izin / Sakit / Dinas Luar
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500">
+                                    <th class="py-3.5 px-4">No</th>
+                                    <th class="py-3.5 px-4">Nama Perangkat Desa</th>
+                                    <th class="py-3.5 px-4">Jabatan</th>
+                                    <th class="py-3.5 px-4">Jam Masuk</th>
+                                    <th class="py-3.5 px-4">Jarak Lokasi</th>
+                                    <th class="py-3.5 px-4">ID Perangkat HP</th>
+                                    <th class="py-3.5 px-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="todayMonitoringTableBody" class="divide-y divide-slate-100 text-sm">
+                                <!-- Diisi via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: LAPORAN HARIAN, MINGGUAN, BULANAN & CETAK -->
+            <section id="adminTab-laporan" class="hidden space-y-6">
+                <!-- Filter Laporan (Disembunyikan saat print) -->
+                <div class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-sm no-print space-y-4">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                        <div>
+                            <h2 class="text-lg font-extrabold text-slate-900">Laporan Presensi Perangkat Desa</h2>
+                            <p class="text-xs text-slate-500">Pilih periode laporan harian, mingguan, atau bulanan untuk dicetak atau diunduh</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="exportReportCSV()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-2 shadow-sm">
+                                <i class="fa-solid fa-file-excel"></i> Ekspor CSV / Excel
+                            </button>
+                            <button onclick="window.print()" class="px-4 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-800 text-white text-xs font-bold transition flex items-center gap-2 shadow-sm">
+                                <i class="fa-solid fa-print"></i> Cetak Laporan Resmi
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Pilihan Jenis Periode -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1.5">Jenis Laporan</label>
+                            <select id="reportPeriodType" onchange="handleReportTypeChange()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-navy-800">
+                                <option value="harian">Laporan Harian</option>
+                                <option value="mingguan">Laporan Mingguan</option>
+                                <option value="bulanan" selected>Laporan Bulanan</option>
+                            </select>
+                        </div>
+
+                        <!-- Filter Harian -->
+                        <div id="filterHarianBox" class="hidden">
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1.5">Pilih Tanggal</label>
+                            <input type="date" id="reportDateDaily" onchange="generateReport()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium">
+                        </div>
+
+                        <!-- Filter Mingguan -->
+                        <div id="filterMingguanBox" class="hidden md:col-span-2 grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1.5">Dari Tanggal</label>
+                                <input type="date" id="reportDateStart" onchange="generateReport()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1.5">Sampai Tanggal</label>
+                                <input type="date" id="reportDateEnd" onchange="generateReport()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium">
+                            </div>
+                        </div>
+
+                        <!-- Filter Bulanan -->
+                        <div id="filterBulananBox" class="md:col-span-2 grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1.5">Pilih Bulan</label>
+                                <select id="reportMonth" onchange="generateReport()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium">
+                                    <option value="01">Januari</option>
+                                    <option value="02">Februari</option>
+                                    <option value="03">Maret</option>
+                                    <option value="04">April</option>
+                                    <option value="05">Mei</option>
+                                    <option value="06">Juni</option>
+                                    <option value="07">Juli</option>
+                                    <option value="08">Agustus</option>
+                                    <option value="09">September</option>
+                                    <option value="10">Oktober</option>
+                                    <option value="11">November</option>
+                                    <option value="12">Desember</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1.5">Tahun</label>
+                                <select id="reportYear" onchange="generateReport()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium">
+                                    <option value="2025">2025</option>
+                                    <option value="2026" selected>2026</option>
+                                    <option value="2027">2027</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <button onclick="generateReport()" class="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold transition">
+                                <i class="fa-solid fa-filter mr-1.5"></i> Tampilkan Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AREA DOKUMEN LAPORAN SIAP CETAK (KOP SURAT RESMI PEMDES KEDUNGMAKAM) -->
+                <div id="printArea" class="bg-white p-6 sm:p-10 rounded-3xl border border-slate-200/80 shadow-sm">
+                    <!-- Kop Surat Resmi -->
+                    <div class="flex items-center justify-between border-b-4 border-double border-slate-900 pb-4 mb-6 gap-4">
+                        <div class="w-16 h-16 sm:w-20 sm:h-20 shrink-0 flex items-center justify-center">
+                            <img id="printLogoImg" src="" alt="Logo Kabupaten Tuban" class="w-full h-full object-contain">
+                        </div>
+                        <div class="text-center flex-1">
+                            <h3 class="text-sm sm:text-base font-bold uppercase tracking-wide text-slate-900">Pemerintah Kabupaten Tuban</h3>
+                            <h2 class="text-base sm:text-lg font-bold uppercase tracking-wide text-slate-900">Kecamatan Jatirogo</h2>
+                            <h1 class="text-lg sm:text-2xl font-extrabold uppercase tracking-wider text-slate-900">Pemerintah Desa Kedungmakam</h1>
+                            <p id="printAlamatDesa" class="text-[11px] sm:text-xs text-slate-600 mt-0.5">Alamat: Jl. Raya Desa Kedungmakam, Kec. Jatirogo, Kab. Tuban, Jawa Timur 62362</p>
+                        </div>
+                        <div class="w-16 sm:w-20 hidden sm:block"></div>
+                    </div>
+
+                    <!-- Judul Laporan -->
+                    <div class="text-center mb-6">
+                        <h4 id="printReportTitle" class="text-base sm:text-lg font-extrabold uppercase underline text-slate-900">LAPORAN REKAPITULASI PRESENSI MASUK PERANGKAT DESA</h4>
+                        <p id="printReportSubtitle" class="text-xs sm:text-sm font-semibold text-slate-600 mt-1">Periode: November 2026</p>
+                    </div>
+
+                    <!-- Tabel Laporan -->
+                    <div class="overflow-x-auto">
+                        <table id="reportTable" class="w-full text-left border-collapse border border-slate-400 text-xs sm:text-sm">
+                            <thead id="reportTableHead" class="bg-slate-100 text-slate-900 font-bold">
+                                <!-- Diisi dinamis sesuai Harian vs Rekap Mingguan/Bulanan -->
+                            </thead>
+                            <tbody id="reportTableBody" class="divide-y divide-slate-300">
+                                <!-- Diisi dinamis -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Kolom Tanda Tangan Resmi (Kepala Desa & Sekretaris Desa) -->
+                    <div class="mt-10 grid grid-cols-2 gap-8 text-xs sm:text-sm text-slate-900">
+                        <div class="text-center">
+                            <p class="mb-1">Mengetahui,</p>
+                            <p class="font-bold uppercase">Kepala Desa Kedungmakam</p>
+                            <div class="h-20"></div>
+                            <p id="printNamaKades" class="font-bold underline uppercase">H. SUTRISNO, S.Sos</p>
+                        </div>
+                        <div class="text-center">
+                            <p id="printTanggalTTD" class="mb-1">Kedungmakam, 24 November 2026</p>
+                            <p class="font-bold uppercase">Sekretaris Desa Kedungmakam</p>
+                            <div class="h-20"></div>
+                            <p id="printNamaSekdes" class="font-bold underline uppercase">AHMAD FAUZI, S.AP</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: DATA PERANGKAT DESA & KUNCI PERANGKAT HP -->
+            <section id="adminTab-pegawai" class="hidden space-y-6">
+                <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                    <div class="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-lg font-extrabold text-slate-900">Manajemen Akun & Perangkat HP Pegawai</h2>
+                            <p class="text-xs text-slate-500">Setiap perangkat desa hanya dapat melakukan presensi dari 1 HP terdaftar. Reset perangkat jika pegawai ganti HP.</p>
+                        </div>
+                        <button onclick="openEmployeeModal()" class="px-4 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-800 text-white text-xs font-bold transition flex items-center gap-2 self-start sm:self-auto shadow-sm">
+                            <i class="fa-solid fa-user-plus"></i> Tambah Perangkat Desa
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500">
+                                    <th class="py-3.5 px-4">Nama Lengkap</th>
+                                    <th class="py-3.5 px-4">Jabatan</th>
+                                    <th class="py-3.5 px-4">Username / Sandi</th>
+                                    <th class="py-3.5 px-4">Status Kunci HP (Device ID)</th>
+                                    <th class="py-3.5 px-4 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employeeTableBody" class="divide-y divide-slate-100 text-sm">
+                                <!-- Diisi via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: PENGATURAN LOKASI KANTOR, JAM MASUK & LOGO KABUPATEN -->
+            <section id="adminTab-pengaturan" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <!-- Pengaturan GPS & Jam Kerja -->
+                <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-5">
+                    <div class="border-b border-slate-100 pb-4">
+                        <h2 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-map-location-dot text-navy-800"></i> Titik Koordinat Kantor & Jam Kerja
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Atur koordinat Balai Desa Kedungmakam, radius toleransi GPS, dan batas jam masuk.</p>
+                    </div>
+
+                    <form id="officeSettingsForm" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1.5">Latitude Kantor</label>
+                                <input type="number" step="any" id="setLat" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1.5">Longitude Kantor</label>
+                                <input type="number" step="any" id="setLng" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono">
+                            </div>
+                        </div>
+
+                        <button type="button" onclick="useCurrentLocationForOffice()" class="w-full py-2.5 px-4 rounded-xl bg-blue-50 hover:bg-blue-100 text-navy-900 border border-blue-200 text-xs font-bold transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-location-crosshairs"></i> Gunakan Lokasi GPS Saya Saat Ini Sebagai Titik Kantor
+                        </button>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1.5">Radius Maksimal (Meter)</label>
+                                <input type="number" min="10" max="5000" id="setRadius" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1.5">Batas Jam Masuk (WIB)</label>
+                                <input type="time" id="setMaxTime" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-600 mb-1.5">Alamat Lengkap Balai Desa (Untuk Kop Surat)</label>
+                            <input type="text" id="setAlamat" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1.5">Nama Kepala Desa (TTD)</label>
+                                <input type="text" id="setNamaKades" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-slate-600 mb-1.5">Nama Sekretaris Desa (TTD)</label>
+                                <input type="text" id="setNamaSekdes" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full py-3 bg-navy-900 hover:bg-navy-800 text-white font-bold rounded-xl text-sm transition shadow-md">
+                            <i class="fa-solid fa-floppy-disk mr-1.5"></i> Simpan Pengaturan Kantor
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Pengaturan Logo Kabupaten Tuban & Akun Admin -->
+                <div class="space-y-6">
+                    <!-- Upload / Ganti Logo Kabupaten -->
+                    <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
+                        <div class="border-b border-slate-100 pb-4">
+                            <h2 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-shield-halved text-gold-600"></i> Logo Kabupaten Tuban
+                            </h2>
+                            <p class="text-xs text-slate-500 mt-0.5">Logo ini tampil pada halaman Login, Header Aplikasi, dan Kop Surat Laporan Cetak.</p>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row items-center gap-5 p-4 bg-slate-50 rounded-2xl border border-slate-200/70">
+                            <div class="w-24 h-24 rounded-2xl bg-white p-2.5 border border-slate-200 shadow-sm flex items-center justify-center shrink-0">
+                                <img id="settingsLogoPreview" src="" alt="Preview Logo Kabupaten" class="w-full h-full object-contain">
+                            </div>
+                            <div class="space-y-2.5 text-center sm:text-left flex-1">
+                                <p class="text-xs text-slate-600">Unggah file gambar logo resmi Kabupaten Tuban (PNG, JPG, atau SVG). Maksimal ukuran disarankan 1MB.</p>
+                                <div class="flex flex-wrap justify-center sm:justify-start gap-2">
+                                    <label class="cursor-pointer px-4 py-2 rounded-xl bg-navy-900 hover:bg-navy-800 text-white text-xs font-bold transition inline-flex items-center gap-1.5">
+                                        <i class="fa-solid fa-upload"></i> Ganti Logo Kabupaten
+                                        <input type="file" id="logoUploadInput" accept="image/*" onchange="handleLogoUpload(event)" class="hidden">
+                                    </label>
+                                    <button type="button" onclick="resetDefaultLogo()" class="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold transition">
+                                        Reset Bawaan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ganti Password Admin -->
+                    <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
+                        <div class="border-b border-slate-100 pb-3">
+                            <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-key text-navy-800"></i> Ubah Sandi Akun Admin Desa
+                            </h2>
+                        </div>
+                        <form id="adminPasswordForm" class="space-y-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Username Admin</label>
+                                    <input type="text" id="setAdminUsername" required class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Password Baru</label>
+                                    <input type="text" id="setAdminPassword" required class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                </div>
+                            </div>
+                            <button type="submit" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition">
+                                Perbarui Akun Admin
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+            </section>
+        </main>
+    </div>
+
+    <!-- ==================== MODAL TAMBAH / EDIT PEGAWAI ==================== -->
+    <div id="employeeModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-100">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <h3 id="employeeModalTitle" class="text-lg font-extrabold text-slate-900">Tambah Perangkat Desa</h3>
+                <button onclick="closeEmployeeModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="employeeForm" class="space-y-4">
+                <input type="hidden" id="empId">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Nama Lengkap & Gelar</label>
+                    <input type="text" id="empName" required placeholder="Contoh: Budi Santoso, S.Pd" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Jabatan Perangkat Desa</label>
+                    <select id="empJabatan" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                        <option value="Kepala Desa">Kepala Desa</option>
+                        <option value="Sekretaris Desa">Sekretaris Desa</option>
+                        <option value="Kaur Tata Usaha dan Umum">Kaur Tata Usaha dan Umum</option>
+                        <option value="Kaur Keuangan">Kaur Keuangan</option>
+                        <option value="Kaur Perencanaan">Kaur Perencanaan</option>
+                        <option value="Kasi Pemerintahan">Kasi Pemerintahan</option>
+                        <option value="Kasi Kesejahteraan">Kasi Kesejahteraan</option>
+                        <option value="Kasi Pelayanan">Kasi Pelayanan</option>
+                        <option value="Kepala Dusun">Kepala Dusun</option>
+                        <option value="Staf Perangkat Desa">Staf Perangkat Desa</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Username Login</label>
+                        <input type="text" id="empUsername" required placeholder="username" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Password</label>
+                        <input type="text" id="empPassword" required placeholder="123456" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-3">
+                    <button type="button" onclick="closeEmployeeModal()" class="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200">Batal</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-navy-900 hover:bg-navy-800 shadow">Simpan Data</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL CATAT IZIN / SAKIT / DINAS LUAR ==================== -->
+    <div id="manualAttendanceModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 border border-slate-100">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <h3 class="text-lg font-extrabold text-slate-900">Input Status Kehadiran Manual</h3>
+                <button onclick="closeManualAttendanceModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="manualAttendanceForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Pilih Perangkat Desa</label>
+                    <select id="manualEmpSelect" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Tanggal</label>
+                    <input type="date" id="manualDate" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Keterangan Status</label>
+                    <select id="manualStatus" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                        <option value="Izin">Izin</option>
+                        <option value="Sakit">Sakit</option>
+                        <option value="Dinas Luar">Dinas Luar (Tugas Kecamatan/Kabupaten)</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2 pt-3">
+                    <button type="button" onclick="closeManualAttendanceModal()" class="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200">Batal</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-navy-900 hover:bg-navy-800 shadow">Simpan Status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================================================
+           1. INISIALISASI DATA BAWAAN & LOGO SVG KABUPATEN TUBAN
+           ========================================================================== */
+        const DEFAULT_TUBAN_LOGO_SVG = `data:image/svg+xml;utf8,` + encodeURIComponent(`
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220">
+                <defs>
+                    <linearGradient id="shieldGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#1e3a8a"/>
+                        <stop offset="100%" stop-color="#0f2350"/>
+                    </linearGradient>
+                </defs>
+                <!-- Perisai -->
+                <path d="M20,20 L180,20 L180,115 C180,165 100,205 100,205 C100,205 20,165 20,115 Z" fill="url(#shieldGrad)" stroke="#f59e0b" stroke-width="8"/>
+                <!-- Bintang Emas -->
+                <polygon points="100,32 105,47 121,47 108,56 113,71 100,62 87,71 92,56 79,47 95,47" fill="#fbbf24"/>
+                <!-- Tugu / Monumen & Ombak Laut Tuban -->
+                <rect x="88" y="78" width="24" height="58" rx="3" fill="#ffffff"/>
+                <polygon points="100,68 84,80 116,80" fill="#fbbf24"/>
+                <!-- Padi & Kapas Simbolis -->
+                <path d="M52,70 Q40,115 75,155" fill="none" stroke="#fbbf24" stroke-width="5" stroke-linecap="round"/>
+                <path d="M148,70 Q160,115 125,155" fill="none" stroke="#10b981" stroke-width="5" stroke-linecap="round"/>
+                <!-- Pita Bawah -->
+                <rect x="45" y="152" width="110" height="22" rx="6" fill="#f59e0b"/>
+                <text x="100" y="167" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#0f2350" text-anchor="middle">KAB. TUBAN</text>
+            </svg>
+        `);
+
+        // Koordinat default area Kec. Jatirogo, Kab. Tuban (Desa Kedungmakam)
+        const DEFAULT_SETTINGS = {
+            lat: -6.885640,
+            lng: 111.664210,
+            radius: 100, // meter
+            maxTime: '08:00',
+            alamat: 'Jl. Poros Desa Kedungmakam, Kec. Jatirogo, Kab. Tuban, Jawa Timur 62362',
+            namaKades: 'H. SUTRISNO, S.Sos',
+            namaSekdes: 'AHMAD FAUZI, S.AP',
+            adminUsername: 'admin',
+            adminPassword: 'admin123',
+            logoDataUrl: DEFAULT_TUBAN_LOGO_SVG
+        };
+
+        const DEFAULT_EMPLOYEES = [
+            { id: 'emp-1', name: 'H. Sutrisno, S.Sos', jabatan: 'Kepala Desa', username: 'kades', password: '123456', boundDeviceId: null },
+            { id: 'emp-2', name: 'Ahmad Fauzi, S.AP', jabatan: 'Sekretaris Desa', username: 'sekdes', password: '123456', boundDeviceId: null },
+            { id: 'emp-3', name: 'Siti Aminah, S.E', jabatan: 'Kaur Keuangan', username: 'kaurkeu', password: '123456', boundDeviceId: null },
+            { id: 'emp-4', name: 'Budi Santoso', jabatan: 'Kasi Pemerintahan', username: 'kasipem', password: '123456', boundDeviceId: null },
+            { id: 'emp-5', name: 'Rina Wati, S.Kom', jabatan: 'Kaur Tata Usaha dan Umum', username: 'kaurtu', password: '123456', boundDeviceId: null },
+            { id: 'emp-6', name: 'Slamet Riyadi', jabatan: 'Kepala Dusun Kedungmakam', username: 'kasun1', password: '123456', boundDeviceId: null }
+        ];
+
+        // Helper tanggal YYYY-MM-DD lokal
+        function getLocalDateString(dateObj = new Date()) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Generate Device ID unik & persisten pada browser HP ini
+        function getOrCreateBrowserDeviceId() {
+            let devId = localStorage.getItem('kedungmakam_browser_device_id');
+            if (!devId) {
+                const randomHex = Math.random().toString(36).substring(2, 8).toUpperCase();
+                const platformHint = (navigator.platform || 'HP').replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase();
+                devId = `HP-${platformHint}-${randomHex}`;
+                localStorage.setItem('kedungmakam_browser_device_id', devId);
+            }
+            return devId;
+        }
+
+        // Seed data riwayat contoh agar laporan langsung terlihat hidup saat pertama dibuka
+        function seedInitialAttendanceIfEmpty() {
+            if (!localStorage.getItem('kedungmakam_attendance')) {
+                const today = new Date();
+                const sampleRecords = [];
+                // Buat data 5 hari kerja sebelumnya
+                for (let i = 1; i <= 5; i++) {
+                    const pastDate = new Date(today);
+                    pastDate.setDate(today.getDate() - i);
+                    if (pastDate.getDay() === 0) continue; // Lewati Minggu
+                    const dateStr = getLocalDateString(pastDate);
+
+                    DEFAULT_EMPLOYEES.forEach((emp, idx) => {
+                        // Simulasikan variasi kehadiran
+                        if (i === 2 && idx === 3) {
+                            sampleRecords.push({
+                                id: `att-${dateStr}-${emp.id}`,
+                                empId: emp.id,
+                                empName: emp.name,
+                                jabatan: emp.jabatan,
+                                date: dateStr,
+                                timeIn: '-',
+                                distance: null,
+                                status: 'Izin',
+                                deviceId: 'ADMIN-INPUT'
+                            });
+                        } else {
+                            const isLate = (i === 1 && idx === 4);
+                            sampleRecords.push({
+                                id: `att-${dateStr}-${emp.id}`,
+                                empId: emp.id,
+                                empName: emp.name,
+                                jabatan: emp.jabatan,
+                                date: dateStr,
+                                timeIn: isLate ? '08:14:22' : `07:${35 + idx}:10`,
+                                distance: 12 + (idx * 5),
+                                status: isLate ? 'Terlambat' : 'Tepat Waktu',
+                                deviceId: `HP-DEMO-0${idx + 1}`
+                            });
+                        }
+                    });
+                }
+                localStorage.setItem('kedungmakam_attendance', JSON.stringify(sampleRecords));
+            }
+        }
+
+        // State Getters & Setters
+        function getSettings() {
+            const saved = localStorage.getItem('kedungmakam_settings');
+            return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : { ...DEFAULT_SETTINGS };
+        }
+        function saveSettings(data) {
+            localStorage.setItem('kedungmakam_settings', JSON.stringify(data));
+            applyLogoEverywhere();
+        }
+        function getEmployees() {
+            const saved = localStorage.getItem('kedungmakam_employees');
+            if (!saved) {
+                localStorage.setItem('kedungmakam_employees', JSON.stringify(DEFAULT_EMPLOYEES));
+                return [...DEFAULT_EMPLOYEES];
+            }
+            return JSON.parse(saved);
+        }
+        function saveEmployees(list) {
+            localStorage.setItem('kedungmakam_employees', JSON.stringify(list));
+        }
+        function getAttendance() {
+            seedInitialAttendanceIfEmpty();
+            return JSON.parse(localStorage.getItem('kedungmakam_attendance') || '[]');
+        }
+        function saveAttendance(list) {
+            localStorage.setItem('kedungmakam_attendance', JSON.stringify(list));
+        }
+
+        /* ==========================================================================
+           2. UI HELPERS (TOAST NOTIFICATION, CUSTOM CONFIRM, LOGO SYNC)
+           ========================================================================== */
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const colors = {
+                success: 'bg-emerald-600 text-white border-emerald-500',
+                error: 'bg-rose-600 text-white border-rose-500',
+                warning: 'bg-amber-500 text-slate-950 border-amber-400',
+                info: 'bg-navy-900 text-white border-navy-800'
+            };
+            const icons = {
+                success: 'fa-circle-check',
+                error: 'fa-circle-exclamation',
+                warning: 'fa-triangle-exclamation',
+                info: 'fa-circle-info'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto flex items-start gap-3 p-4 rounded-2xl shadow-xl border ${colors[type] || colors.info} transform transition-all duration-300 translate-y-0 opacity-100 text-xs sm:text-sm font-semibold`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type] || icons.info} text-base mt-0.5 shrink-0"></i>
+                <div class="flex-1 leading-snug">${message}</div>
+            `;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3800);
+        }
+
+        function showCustomConfirm(title, message, onConfirm) {
+            const modal = document.getElementById('confirmModal');
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmMessage').textContent = message;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            const okBtn = document.getElementById('confirmOkBtn');
+            const cancelBtn = document.getElementById('confirmCancelBtn');
+
+            const cleanup = () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                okBtn.onclick = null;
+                cancelBtn.onclick = null;
+            };
+
+            cancelBtn.onclick = cleanup;
+            okBtn.onclick = () => {
+                cleanup();
+                onConfirm();
+            };
+        }
+
+        function applyLogoEverywhere() {
+            const settings = getSettings();
+            const logoSrc = settings.logoDataUrl || DEFAULT_TUBAN_LOGO_SVG;
+            ['loginLogoImg', 'navLogoImg', 'printLogoImg', 'settingsLogoPreview'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.src = logoSrc;
+            });
+        }
+
+        /* ==========================================================================
+           3. SISTEM LOGIN & AUTENTIKASI
+           ========================================================================== */
+        let selectedLoginRole = 'pegawai';
+        let currentUser = null; // { role: 'admin' | 'pegawai', data: ... }
+        let currentCoords = null; // { lat, lng, isSimulated }
+        let currentDistance = null;
+
+        function setLoginRole(role) {
+            selectedLoginRole = role;
+            const tabPeg = document.getElementById('tabRolePegawai');
+            const tabAdm = document.getElementById('tabRoleAdmin');
+            if (role === 'pegawai') {
+                tabPeg.className = 'py-2.5 text-sm font-bold rounded-lg transition flex items-center justify-center gap-2 bg-white text-navy-900 shadow-sm';
+                tabAdm.className = 'py-2.5 text-sm font-semibold rounded-lg transition flex items-center justify-center gap-2 text-slate-500 hover:text-slate-700';
+            } else {
+                tabAdm.className = 'py-2.5 text-sm font-bold rounded-lg transition flex items-center justify-center gap-2 bg-white text-navy-900 shadow-sm';
+                tabPeg.className = 'py-2.5 text-sm font-semibold rounded-lg transition flex items-center justify-center gap-2 text-slate-500 hover:text-slate-700';
+            }
+        }
+
+        function fillDemoLogin(username, password, role) {
+            setLoginRole(role);
+            document.getElementById('loginUsername').value = username;
+            document.getElementById('loginPassword').value = password;
+        }
+
+        function togglePasswordVisibility() {
+            const input = document.getElementById('loginPassword');
+            const icon = document.getElementById('eyeIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            const settings = getSettings();
+
+            if (selectedLoginRole === 'admin') {
+                if (username === settings.adminUsername && password === settings.adminPassword) {
+                    currentUser = { role: 'admin', name: 'Administrator Desa', jabatan: 'Admin Pemerintah Desa Kedungmakam' };
+                    sessionStorage.setItem('kedungmakam_session', JSON.stringify(currentUser));
+                    showToast('Selamat datang, Admin Pemerintah Desa Kedungmakam!', 'success');
+                    enterApp();
+                } else {
+                    showToast('Username atau kata sandi Admin salah!', 'error');
+                }
+            } else {
+                const employees = getEmployees();
+                const found = employees.find(emp => emp.username.toLowerCase() === username.toLowerCase() && emp.password === password);
+                if (!found) {
+                    showToast('Username atau kata sandi Perangkat Desa tidak ditemukan!', 'error');
+                    return;
+                }
+
+                // Cek Validasi 1 Perangkat HP (Device Lock)
+                const browserDeviceId = getOrCreateBrowserDeviceId();
+                
+                // 1. Cek apakah akun ini sudah terkunci ke HP lain
+                if (found.boundDeviceId && found.boundDeviceId !== browserDeviceId) {
+                    showToast(`Akses Ditolak! Akun ${found.name} sudah terdaftar pada perangkat HP lain (${found.boundDeviceId}). Hubungi Admin Desa jika Anda ganti HP.`, 'error');
+                    return;
+                }
+
+                // 2. Cek apakah HP ini sudah dipakai akun perangkat desa lain
+                const otherOwner = employees.find(emp => emp.id !== found.id && emp.boundDeviceId === browserDeviceId);
+                if (otherOwner) {
+                    showToast(`Perangkat HP ini (${browserDeviceId}) sudah terikat dengan akun ${otherOwner.name}. 1 HP hanya berlaku untuk 1 perangkat desa!`, 'error');
+                    return;
+                }
+
+                currentUser = { role: 'pegawai', empId: found.id };
+                sessionStorage.setItem('kedungmakam_session', JSON.stringify(currentUser));
+                showToast(`Selamat datang, ${found.name}!`, 'success');
+                enterApp();
+            }
+        });
+
+        function logout() {
+            sessionStorage.removeItem('kedungmakam_session');
+            currentUser = null;
+            document.getElementById('mainAppSection').classList.add('hidden');
+            document.getElementById('mainAppSection').classList.remove('flex');
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('loginPassword').value = '';
+        }
+
+        function enterApp() {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('mainAppSection').classList.remove('hidden');
+            document.getElementById('mainAppSection').classList.add('flex');
+
+            if (currentUser.role === 'admin') {
+                document.getElementById('navUserName').textContent = 'Admin Desa Kedungmakam';
+                document.getElementById('navUserRole').textContent = 'Operator & Administrator';
+                document.getElementById('pegawaiDashboard').classList.add('hidden');
+                document.getElementById('adminDashboard').classList.remove('hidden');
+                initAdminDashboard();
+            } else {
+                const emp = getEmployees().find(e => e.id === currentUser.empId);
+                if (!emp) {
+                    logout();
+                    return;
+                }
+                document.getElementById('navUserName').textContent = emp.name;
+                document.getElementById('navUserRole').textContent = emp.jabatan;
+                document.getElementById('adminDashboard').classList.add('hidden');
+                document.getElementById('pegawaiDashboard').classList.remove('hidden');
+                initPegawaiDashboard();
+            }
+        }
+
+        /* ==========================================================================
+           4. LOGIKA GPS GEOLOCATION & RUMUS HAVERSINE
+           ========================================================================== */
+        function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Radius bumi dalam meter
+            const phi1 = lat1 * Math.PI / 180;
+            const phi2 = lat2 * Math.PI / 180;
+            const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+            const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+                      Math.cos(phi1) * Math.cos(phi2) *
+                      Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return Math.round(R * c); // Jarak dalam meter (bulat)
+        }
+
+        function refreshGPS() {
+            const statusText = document.getElementById('gpsStatusText');
+            const coordsText = document.getElementById('gpsCoordsText');
+            const distBadge = document.getElementById('distanceBadge');
+
+            statusText.textContent = 'Mencari sinyal satelit GPS...';
+            distBadge.textContent = 'Menghitung...';
+            distBadge.className = 'inline-block mt-0.5 px-3 py-1 rounded-xl text-sm font-extrabold bg-slate-200 text-slate-700';
+
+            if (!navigator.geolocation) {
+                statusText.textContent = 'Browser tidak mendukung GPS.';
+                showToast('Perangkat/Browser Anda tidak mendukung fitur GPS.', 'error');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    currentCoords = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                        isSimulated: false
+                    };
+                    updateLocationUI();
+                },
+                (err) => {
+                    statusText.textContent = 'Gagal mengakses GPS (Izin lokasi ditolak / sinyal lemah).';
+                    coordsText.textContent = 'Gunakan tombol "Simulasi di Kantor" jika menguji dari PC/Laptop.';
+                    distBadge.textContent = 'GPS Nonaktif';
+                    distBadge.className = 'inline-block mt-0.5 px-3 py-1 rounded-xl text-sm font-extrabold bg-rose-100 text-rose-700';
+                    currentCoords = null;
+                    currentDistance = null;
+                    renderAttendanceActionBox();
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        function simulateOfficeLocation() {
+            const settings = getSettings();
+            // Tambahkan sedikit offset acak 3-12 meter agar realistis
+            const offsetLat = (Math.random() - 0.5) * 0.00012;
+            const offsetLng = (Math.random() - 0.5) * 0.00012;
+            currentCoords = {
+                lat: parseFloat((settings.lat + offsetLat).toFixed(6)),
+                lng: parseFloat((settings.lng + offsetLng).toFixed(6)),
+                isSimulated: true
+            };
+            updateLocationUI();
+            showToast('Mode Simulasi Lokasi Balai Desa Kedungmakam diaktifkan!', 'info');
+        }
+
+        function updateLocationUI() {
+            if (!currentCoords) return;
+            const settings = getSettings();
+            currentDistance = calculateHaversineDistance(
+                currentCoords.lat, currentCoords.lng,
+                settings.lat, settings.lng
+            );
+
+            const isWithinRadius = currentDistance <= settings.radius;
+            const statusText = document.getElementById('gpsStatusText');
+            const coordsText = document.getElementById('gpsCoordsText');
+            const distBadge = document.getElementById('distanceBadge');
+
+            statusText.textContent = isWithinRadius
+                ? 'Lokasi Valid: Anda berada di area Balai Desa Kedungmakam'
+                : 'Di Luar Area Kantor: Anda berada di luar radius Balai Desa';
+            
+            coordsText.textContent = `Lat: ${currentCoords.lat.toFixed(6)}, Lng: ${currentCoords.lng.toFixed(6)} ${currentCoords.isSimulated ? '(Simulasi)' : ''}`;
+            distBadge.textContent = `${currentDistance} meter`;
+            distBadge.className = isWithinRadius
+                ? 'inline-block mt-0.5 px-3 py-1 rounded-xl text-sm font-extrabold bg-emerald-100 text-emerald-700'
+                : 'inline-block mt-0.5 px-3 py-1 rounded-xl text-sm font-extrabold bg-rose-100 text-rose-700';
+
+            renderAttendanceActionBox();
+        }
+
+        /* ==========================================================================
+           5. DASHBOARD PEGAWAI (ABSEN MASUK SAJA + KUNCI 1 HP)
+           ========================================================================== */
+        function initPegawaiDashboard() {
+            const emp = getEmployees().find(e => e.id === currentUser.empId);
+            const settings = getSettings();
+            const browserDevId = getOrCreateBrowserDeviceId();
+
+            // Set profil
+            const initials = emp.name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
+            document.getElementById('pegawaiAvatar').textContent = initials;
+            document.getElementById('pegawaiJabatanBadge').textContent = emp.jabatan;
+            document.getElementById('pegawaiFullName').textContent = emp.name;
+            document.getElementById('pegawaiBoundDevice').textContent = emp.boundDeviceId
+                ? `${emp.boundDeviceId} (Terkunci)`
+                : `${browserDevId} (Akan dikunci saat absen)`;
+
+            document.getElementById('officeRadiusDisplay').textContent = `${settings.radius} meter`;
+            document.getElementById('officeMaxTimeDisplay').textContent = `${settings.maxTime} WIB`;
+
+            renderAttendanceActionBox();
+            renderPegawaiHistory();
+            refreshGPS();
+        }
+
+        function renderAttendanceActionBox() {
+            const box = document.getElementById('attendanceActionBox');
+            if (!box || !currentUser || currentUser.role !== 'pegawai') return;
+
+            const todayStr = getLocalDateString();
+            const attendanceList = getAttendance();
+            const todayRecord = attendanceList.find(a => a.empId === currentUser.empId && a.date === todayStr);
+            const settings = getSettings();
+
+            if (todayRecord) {
+                // Sudah absen masuk hari ini (Tidak ada absen pulang)
+                const isLate = todayRecord.status === 'Terlambat';
+                const badgeColor = todayRecord.status === 'Tepat Waktu'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : (isLate ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800');
+
+                box.innerHTML = `
+                    <div class="p-5 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-center space-y-2">
+                        <div class="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto text-xl shadow">
+                            <i class="fa-solid fa-check"></i>
+                        </div>
+                        <h4 class="text-base font-extrabold text-emerald-950">Presensi Masuk Hari Ini Tercatat</h4>
+                        <p class="text-xs text-emerald-800">Sistem presensi Desa Kedungmakam hanya mencatat jam masuk. Terima kasih atas kedisiplinan Anda.</p>
+                        <div class="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs">
+                            <span class="px-3 py-1 rounded-lg bg-white border border-emerald-200 font-bold text-slate-700">
+                                <i class="fa-regular fa-clock text-emerald-600 mr-1"></i> Jam Masuk: ${todayRecord.timeIn} WIB
+                            </span>
+                            <span class="px-3 py-1 rounded-lg ${badgeColor} font-bold">
+                                Status: ${todayRecord.status}
+                            </span>
+                            ${todayRecord.distance !== null ? `<span class="px-3 py-1 rounded-lg bg-white border border-emerald-200 font-semibold text-slate-600">Jarak: ${todayRecord.distance}m</span>` : ''}
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Belum absen hari ini
+            const canAttend = currentCoords !== null && currentDistance !== null && currentDistance <= settings.radius;
+
+            box.innerHTML = `
+                <button type="button" onclick="submitClockIn()" ${!canAttend ? 'disabled' : ''}
+                    class="w-full py-4 px-6 rounded-2xl font-extrabold text-base transition flex items-center justify-center gap-3 shadow-lg ${
+                        canAttend
+                        ? 'bg-gradient-to-r from-navy-900 to-blue-800 hover:from-navy-800 hover:to-blue-700 text-white shadow-navy-900/25 cursor-pointer'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                    }">
+                    <i class="fa-solid fa-fingerprint text-xl ${canAttend ? 'text-gold-400' : ''}"></i>
+                    <span>${canAttend ? 'ABSEN MASUK SEKARANG' : 'POSISI DI LUAR RADIUS / GPS BELUM SIAP'}</span>
+                </button>
+                <p class="text-[11px] text-center text-slate-400 mt-2">
+                    <i class="fa-solid fa-lock mr-1"></i> Presensi otomatis mengunci akun Anda pada perangkat HP ini.
+                </p>
+            `;
+        }
+
+        function submitClockIn() {
+            const settings = getSettings();
+            const employees = getEmployees();
+            const empIndex = employees.findIndex(e => e.id === currentUser.empId);
+            if (empIndex === -1) return;
+
+            const emp = employees[empIndex];
+            const browserDeviceId = getOrCreateBrowserDeviceId();
+
+            // Validasi Ulang 1 Perangkat HP
+            if (emp.boundDeviceId && emp.boundDeviceId !== browserDeviceId) {
+                showToast('Gagal! Akun Anda terikat pada perangkat HP lain.', 'error');
+                return;
+            }
+            const usedByOther = employees.find(e => e.id !== emp.id && e.boundDeviceId === browserDeviceId);
+            if (usedByOther) {
+                showToast(`Gagal! HP ini sudah dipakai oleh ${usedByOther.name}.`, 'error');
+                return;
+            }
+
+            // Validasi Ulang Radius GPS
+            if (!currentCoords || currentDistance === null || currentDistance > settings.radius) {
+                showToast(`Anda berada di luar radius Balai Desa (${currentDistance ?? '?'}m > ${settings.radius}m).`, 'error');
+                return;
+            }
+
+            const now = new Date();
+            const todayStr = getLocalDateString(now);
+            const attendanceList = getAttendance();
+
+            if (attendanceList.some(a => a.empId === emp.id && a.date === todayStr)) {
+                showToast('Anda sudah melakukan presensi masuk hari ini.', 'warning');
+                renderAttendanceActionBox();
+                return;
+            }
+
+            // Kunci Device ID HP ke akun pegawai ini secara permanen sampai di-reset Admin
+            if (!emp.boundDeviceId) {
+                employees[empIndex].boundDeviceId = browserDeviceId;
+                saveEmployees(employees);
+                document.getElementById('pegawaiBoundDevice').textContent = `${browserDeviceId} (Terkunci)`;
+            }
+
+            // Cek ketepatan waktu
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const timeInStr = `${hours}:${minutes}:${seconds}`;
+            const currentHHMM = `${hours}:${minutes}`;
+            const status = currentHHMM <= settings.maxTime ? 'Tepat Waktu' : 'Terlambat';
+
+            const newRecord = {
+                id: `att-${todayStr}-${emp.id}`,
+                empId: emp.id,
+                empName: emp.name,
+                jabatan: emp.jabatan,
+                date: todayStr,
+                timeIn: timeInStr,
+                distance: currentDistance,
+                status: status,
+                deviceId: browserDeviceId
+            };
+
+            attendanceList.unshift(newRecord);
+            saveAttendance(attendanceList);
+
+            showToast(`Presensi Masuk Berhasil (${timeInStr} WIB - ${status})!`, 'success');
+            renderAttendanceActionBox();
+            renderPegawaiHistory();
+        }
+
+        function renderPegawaiHistory() {
+            const tbody = document.getElementById('pegawaiHistoryTableBody');
+            const currentMonthPrefix = getLocalDateString().slice(0, 7); // YYYY-MM
+            const records = getAttendance()
+                .filter(a => a.empId === currentUser.empId && a.date.startsWith(currentMonthPrefix))
+                .sort((a, b) => b.date.localeCompare(a.date));
+
+            document.getElementById('pegawaiMonthTotal').textContent = `${records.length} Hari Tercatat`;
+
+            if (records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-xs text-slate-400">Belum ada riwayat presensi bulan ini.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = records.map(r => {
+                const badgeClass = r.status === 'Tepat Waktu'
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : (r.status === 'Terlambat' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700');
+                return `
+                    <tr class="hover:bg-slate-50/70">
+                        <td class="py-3 px-3 font-medium text-slate-800">${formatIndoDate(r.date)}</td>
+                        <td class="py-3 px-3 font-mono text-xs font-bold text-slate-700">${r.timeIn}</td>
+                        <td class="py-3 px-3 text-xs text-slate-500">${r.distance !== null ? r.distance + ' m' : '-'}</td>
+                        <td class="py-3 px-3">
+                            <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${badgeClass}">${r.status}</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        /* ==========================================================================
+           6. DASHBOARD ADMIN (MONITORING, LAPORAN, PEGAWAI, PENGATURAN)
+           ========================================================================== */
+        function initAdminDashboard() {
+            renderAdminSummaryAndToday();
+            renderEmployeeManagementTable();
+            loadSettingsForm();
+            initReportFilters();
+            generateReport();
+        }
+
+        function switchAdminTab(tabName) {
+            document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+                btn.className = 'admin-tab-btn flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 text-slate-600 hover:bg-slate-100';
+            });
+            const activeBtn = document.getElementById(`adminTabBtn-${tabName}`);
+            if (activeBtn) {
+                activeBtn.className = 'admin-tab-btn flex-1 min-w-[140px] py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2 bg-navy-900 text-white shadow-sm';
+            }
+
+            ['ringkasan', 'laporan', 'pegawai', 'pengaturan'].forEach(t => {
+                const sec = document.getElementById(`adminTab-${t}`);
+                if (sec) sec.classList.toggle('hidden', t !== tabName);
+            });
+
+            if (tabName === 'laporan') generateReport();
+            if (tabName === 'ringkasan') renderAdminSummaryAndToday();
+        }
+
+        function renderAdminSummaryAndToday() {
+            const employees = getEmployees();
+            const todayStr = getLocalDateString();
+            const todayAttendance = getAttendance().filter(a => a.date === todayStr);
+
+            let tepatWaktu = 0;
+            let terlambat = 0;
+            todayAttendance.forEach(a => {
+                if (a.status === 'Tepat Waktu') tepatWaktu++;
+                else if (a.status === 'Terlambat') terlambat++;
+            });
+            const belumAbsen = Math.max(0, employees.length - todayAttendance.length);
+
+            document.getElementById('statTotalPegawai').textContent = employees.length;
+            document.getElementById('statTepatWaktu').textContent = tepatWaktu;
+            document.getElementById('statTerlambat').textContent = terlambat;
+            document.getElementById('statBelumAbsen').textContent = belumAbsen;
+            document.getElementById('todayMonitoringDate').textContent = `Hari ini: ${formatIndoDate(todayStr)}`;
+
+            const tbody = document.getElementById('todayMonitoringTableBody');
+            tbody.innerHTML = employees.map((emp, index) => {
+                const rec = todayAttendance.find(a => a.empId === emp.id);
+                let statusBadge = `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700">Belum Absen</span>`;
+                if (rec) {
+                    const cls = rec.status === 'Tepat Waktu'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : (rec.status === 'Terlambat' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700');
+                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${cls}">${rec.status}</span>`;
+                }
+
+                return `
+                    <tr class="hover:bg-slate-50/70">
+                        <td class="py-3.5 px-4 text-slate-500 font-medium">${index + 1}</td>
+                        <td class="py-3.5 px-4 font-bold text-slate-900">${emp.name}</td>
+                        <td class="py-3.5 px-4 text-xs text-slate-600">${emp.jabatan}</td>
+                        <td class="py-3.5 px-4 font-mono text-xs font-bold text-slate-800">${rec ? rec.timeIn : '-'}</td>
+                        <td class="py-3.5 px-4 text-xs text-slate-600">${rec && rec.distance !== null ? rec.distance + ' m' : '-'}</td>
+                        <td class="py-3.5 px-4 font-mono text-[11px] text-slate-500">${rec ? rec.deviceId : (emp.boundDeviceId || 'Belum Terkunci')}</td>
+                        <td class="py-3.5 px-4">${statusBadge}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        /* ==========================================================================
+           7. MANAJEMEN PERANGKAT DESA & RESET KUNCI HP
+           ========================================================================== */
+        function renderEmployeeManagementTable() {
+            const employees = getEmployees();
+            const tbody = document.getElementById('employeeTableBody');
+
+            tbody.innerHTML = employees.map(emp => `
+                <tr class="hover:bg-slate-50/70">
+                    <td class="py-3.5 px-4 font-bold text-slate-900">${emp.name}</td>
+                    <td class="py-3.5 px-4 text-xs text-slate-600">${emp.jabatan}</td>
+                    <td class="py-3.5 px-4 font-mono text-xs">
+                        <span class="font-bold text-navy-900">${emp.username}</span> / <span class="text-slate-500">${emp.password}</span>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        ${emp.boundDeviceId
+                            ? `<div class="flex items-center gap-2">
+                                <span class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-mono text-[11px] font-bold">
+                                    <i class="fa-solid fa-lock mr-1"></i>${emp.boundDeviceId}
+                                </span>
+                                <button onclick="resetEmployeeDevice('${emp.id}')" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 text-[11px] font-bold transition" title="Lepas kunci HP agar pegawai bisa login dari HP baru">
+                                    Reset HP
+                                </button>
+                               </div>`
+                            : `<span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 text-[11px] font-medium">
+                                <i class="fa-solid fa-lock-open mr-1"></i>Belum Terkunci (Siap Login HP)
+                               </span>`
+                        }
+                    </td>
+                    <td class="py-3.5 px-4 text-right space-x-1">
+                        <button onclick="openEmployeeModal('${emp.id}')" class="p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-navy-800 transition" title="Edit">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="deleteEmployee('${emp.id}')" class="p-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition" title="Hapus">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function resetEmployeeDevice(empId) {
+            const employees = getEmployees();
+            const emp = employees.find(e => e.id === empId);
+            if (!emp) return;
+
+            showCustomConfirm(
+                'Reset Kunci Perangkat HP',
+                `Lepaskan ikatan perangkat HP (${emp.boundDeviceId}) milik ${emp.name}? Setelah di-reset, akun ini dapat login kembali menggunakan perangkat HP baru.`,
+                () => {
+                    emp.boundDeviceId = null;
+                    saveEmployees(employees);
+                    renderEmployeeManagementTable();
+                    renderAdminSummaryAndToday();
+                    showToast(`Kunci perangkat HP untuk ${emp.name} berhasil di-reset.`, 'success');
+                }
+            );
+        }
+
+        function openEmployeeModal(empId = null) {
+            const modal = document.getElementById('employeeModal');
+            document.getElementById('employeeForm').reset();
+            document.getElementById('empId').value = empId || '';
+
+            if (empId) {
+                const emp = getEmployees().find(e => e.id === empId);
+                if (emp) {
+                    document.getElementById('employeeModalTitle').textContent = 'Edit Data Perangkat Desa';
+                    document.getElementById('empName').value = emp.name;
+                    document.getElementById('empJabatan').value = emp.jabatan;
+                    document.getElementById('empUsername').value = emp.username;
+                    document.getElementById('empPassword').value = emp.password;
+                }
+            } else {
+                document.getElementById('employeeModalTitle').textContent = 'Tambah Perangkat Desa';
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeEmployeeModal() {
+            const modal = document.getElementById('employeeModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        document.getElementById('employeeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const id = document.getElementById('empId').value;
+            const name = document.getElementById('empName').value.trim();
+            const jabatan = document.getElementById('empJabatan').value;
+            const username = document.getElementById('empUsername').value.trim();
+            const password = document.getElementById('empPassword').value.trim();
+
+            const employees = getEmployees();
+            const duplicate = employees.find(emp => emp.username.toLowerCase() === username.toLowerCase() && emp.id !== id);
+            if (duplicate) {
+                showToast('Username sudah digunakan oleh perangkat desa lain!', 'error');
+                return;
+            }
+
+            if (id) {
+                const idx = employees.findIndex(emp => emp.id === id);
+                if (idx !== -1) {
+                    employees[idx] = { ...employees[idx], name, jabatan, username, password };
+                }
+                showToast('Data perangkat desa berhasil diperbarui.', 'success');
+            } else {
+                employees.push({
+                    id: `emp-${Date.now()}`,
+                    name,
+                    jabatan,
+                    username,
+                    password,
+                    boundDeviceId: null
+                });
+                showToast('Perangkat desa baru berhasil ditambahkan.', 'success');
+            }
+
+            saveEmployees(employees);
+            closeEmployeeModal();
+            renderEmployeeManagementTable();
+            renderAdminSummaryAndToday();
+        });
+
+        function deleteEmployee(empId) {
+            const employees = getEmployees();
+            const emp = employees.find(e => e.id === empId);
+            if (!emp) return;
+
+            showCustomConfirm(
+                'Hapus Akun Perangkat Desa',
+                `Anda yakin ingin menghapus data ${emp.name} (${emp.jabatan})?`,
+                () => {
+                    const updated = employees.filter(e => e.id !== empId);
+                    saveEmployees(updated);
+                    renderEmployeeManagementTable();
+                    renderAdminSummaryAndToday();
+                    showToast('Data perangkat desa berhasil dihapus.', 'success');
+                }
+            );
+        }
+
+        /* ==========================================================================
+           8. INPUT MANUAL IZIN / SAKIT / DINAS LUAR
+           ========================================================================== */
+        function openManualAttendanceModal() {
+            const select = document.getElementById('manualEmpSelect');
+            const employees = getEmployees();
+            select.innerHTML = employees.map(e => `<option value="${e.id}">${e.name} - ${e.jabatan}</option>`).join('');
+            document.getElementById('manualDate').value = getLocalDateString();
+
+            const modal = document.getElementById('manualAttendanceModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeManualAttendanceModal() {
+            const modal = document.getElementById('manualAttendanceModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        document.getElementById('manualAttendanceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const empId = document.getElementById('manualEmpSelect').value;
+            const dateStr = document.getElementById('manualDate').value;
+            const status = document.getElementById('manualStatus').value;
+
+            const emp = getEmployees().find(e => e.id === empId);
+            if (!emp) return;
+
+            let attendance = getAttendance();
+            // Hapus jika sudah ada entri di tanggal tsb agar terganti
+            attendance = attendance.filter(a => !(a.empId === empId && a.date === dateStr));
+
+            attendance.unshift({
+                id: `att-${dateStr}-${empId}`,
+                empId: emp.id,
+                empName: emp.name,
+                jabatan: emp.jabatan,
+                date: dateStr,
+                timeIn: '-',
+                distance: null,
+                status: status,
+                deviceId: 'ADMIN-INPUT'
+            });
+
+            saveAttendance(attendance);
+            closeManualAttendanceModal();
+            renderAdminSummaryAndToday();
+            generateReport();
+            showToast(`Status ${status} untuk ${emp.name} berhasil dicatat.`, 'success');
+        });
+
+        /* ==========================================================================
+           9. LAPORAN HARIAN, MINGGUAN, BULANAN & EKSPOR CSV
+           ========================================================================== */
+        let currentExportRows = [];
+
+        function initReportFilters() {
+            const today = new Date();
+            const todayStr = getLocalDateString(today);
+            document.getElementById('reportDateDaily').value = todayStr;
+
+            // Default mingguan: 7 hari terakhir
+            const weekAgo = new Date(today);
+            weekAgo.setDate(today.getDate() - 6);
+            document.getElementById('reportDateStart').value = getLocalDateString(weekAgo);
+            document.getElementById('reportDateEnd').value = todayStr;
+
+            // Default bulanan: bulan & tahun ini
+            document.getElementById('reportMonth').value = String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('reportYear').value = String(today.getFullYear());
+        }
+
+        function handleReportTypeChange() {
+            const type = document.getElementById('reportPeriodType').value;
+            document.getElementById('filterHarianBox').classList.toggle('hidden', type !== 'harian');
+            document.getElementById('filterMingguanBox').classList.toggle('hidden', type !== 'mingguan');
+            document.getElementById('filterBulananBox').classList.toggle('hidden', type !== 'bulanan');
+            generateReport();
+        }
+
+        function generateReport() {
+            const type = document.getElementById('reportPeriodType').value;
+            const settings = getSettings();
+            const employees = getEmployees();
+            const attendance = getAttendance();
+
+            // Sinkronisasi Kop Surat & TTD
+            document.getElementById('printAlamatDesa').textContent = `Alamat: ${settings.alamat}`;
+            document.getElementById('printNamaKades').textContent = settings.namaKades;
+            document.getElementById('printNamaSekdes').textContent = settings.namaSekdes;
+            document.getElementById('printTanggalTTD').textContent = `Kedungmakam, ${formatIndoDate(getLocalDateString())}`;
+
+            const thead = document.getElementById('reportTableHead');
+            const tbody = document.getElementById('reportTableBody');
+            const titleEl = document.getElementById('printReportTitle');
+            const subEl = document.getElementById('printReportSubtitle');
+
+            currentExportRows = [];
+
+            if (type === 'harian') {
+                const targetDate = document.getElementById('reportDateDaily').value || getLocalDateString();
+                titleEl.textContent = 'LAPORAN PRESENSI HARIAN PERANGKAT DESA KEDUNGMAKAM';
+                subEl.textContent = `Hari / Tanggal: ${formatIndoDate(targetDate)}`;
+
+                thead.innerHTML = `
+                    <tr>
+                        <th class="border border-slate-400 py-2 px-3 text-center w-10">No</th>
+                        <th class="border border-slate-400 py-2 px-3">Nama Perangkat Desa</th>
+                        <th class="border border-slate-400 py-2 px-3">Jabatan</th>
+                        <th class="border border-slate-400 py-2 px-3 text-center">Jam Masuk</th>
+                        <th class="border border-slate-400 py-2 px-3 text-center">Jarak GPS</th>
+                        <th class="border border-slate-400 py-2 px-3 text-center">Keterangan</th>
+                    </tr>
+                `;
+
+                currentExportRows.push(['No', 'Nama Perangkat Desa', 'Jabatan', 'Tanggal', 'Jam Masuk', 'Jarak GPS', 'Status']);
+
+                tbody.innerHTML = employees.map((emp, idx) => {
+                    const rec = attendance.find(a => a.empId === emp.id && a.date === targetDate);
+                    const jam = rec ? rec.timeIn : '-';
+                    const jarak = rec && rec.distance !== null ? `${rec.distance} m` : '-';
+                    const status = rec ? rec.status : 'Tanpa Keterangan';
+
+                    currentExportRows.push([idx + 1, emp.name, emp.jabatan, targetDate, jam, jarak, status]);
+
+                    return `
+                        <tr>
+                            <td class="border border-slate-400 py-2 px-3 text-center">${idx + 1}</td>
+                            <td class="border border-slate-400 py-2 px-3 font-semibold">${emp.name}</td>
+                            <td class="border border-slate-400 py-2 px-3">${emp.jabatan}</td>
+                            <td class="border border-slate-400 py-2 px-3 text-center font-mono">${jam}</td>
+                            <td class="border border-slate-400 py-2 px-3 text-center">${jarak}</td>
+                            <td class="border border-slate-400 py-2 px-3 text-center font-semibold">${status}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } else {
+                // Mingguan atau Bulanan (Rekapitulasi Jumlah Kehadiran)
+                let filteredRecords = [];
+                if (type === 'mingguan') {
+                    const start = document.getElementById('reportDateStart').value;
+                    const end = document.getElementById('reportDateEnd').value;
+                    titleEl.textContent = 'LAPORAN REKAPITULASI PRESENSI MINGGUAN PERANGKAT DESA';
+                    subEl.textContent = `Periode: ${formatIndoDate(start)} s/d ${formatIndoDate(end)}`;
+                    filteredRecords = attendance.filter(a => a.date >= start && a.date <= end);
+                } else {
+                    const month = document.getElementById('reportMonth').value;
+                    const year = document.getElementById('reportYear').value;
+                    const monthNames = {
+                        '01': 'Januari', '02': 'Februari', '03': 'Maret', '04': 'April',
+                        '05': 'Mei', '06': 'Juni', '07': 'Juli', '08': 'Agustus',
+                        '09': 'September', '10': 'Oktober', '11': 'November', '12': 'Desember'
+                    };
+                    const prefix = `${year}-${month}`;
+                    titleEl.textContent = 'LAPORAN REKAPITULASI PRESENSI BULANAN PERANGKAT DESA';
+                    subEl.textContent = `Bulan: ${monthNames[month]} ${year}`;
+                    filteredRecords = attendance.filter(a => a.date.startsWith(prefix));
+                }
+
+                thead.innerHTML = `
+                    <tr>
+                        <th class="border border-slate-400 py-2 px-3 text-center w-10">No</th>
+                        <th class="border border-slate-400 py-2 px-3">Nama Perangkat Desa</th>
+                        <th class="border border-slate-400 py-2 px-3">Jabatan</th>
+                        <th class="border border-slate-400 py-2 px-3 text-center">Tepat Waktu</th>
+                        <th class="border border-slate-400 py-2 px-3 text-center">Terlambat</th>
+                        <th class="border border-slate-400 py-2 px-3 text-center">Izin/Sakit/DL</th>
+                        <th class="border border-slate-400 py-2 px-3 text-center bg-slate-200">Total Hadir</th>
+                    </tr>
+                `;
+
+                currentExportRows.push(['No', 'Nama Perangkat Desa', 'Jabatan', 'Tepat Waktu', 'Terlambat', 'Izin/Sakit/DL', 'Total Kehadiran']);
+
+                tbody.innerHTML = employees.map((emp, idx) => {
+                    const empLogs = filteredRecords.filter(r => r.empId === emp.id);
+                    const tepat = empLogs.filter(r => r.status === 'Tepat Waktu').length;
+                    const telat = empLogs.filter(r => r.status === 'Terlambat').length;
+                    const izin = empLogs.filter(r => ['Izin', 'Sakit', 'Dinas Luar'].includes(r.status)).length;
+                    const totalHadir = tepat + telat;
+
+                    currentExportRows.push([idx + 1, emp.name, emp.jabatan, tepat, telat, izin, totalHadir]);
+
+                    return `
+                        <tr>
+                            <td class="border border-slate-400 py-2 px-3 text-center">${idx + 1}</td>
+                            <td class="border border-slate-400 py-2 px-3 font-semibold">${emp.name}</td>
+                            <td class="border border-slate-400 py-2 px-3">${emp.jabatan}</td>
+                            <td class="border border-slate-400 py-2 px-3 text-center">${tepat}</td>
+                            <td class="border border-slate-400 py-2 px-3 text-center">${telat}</td>
+                            <td class="border border-slate-400 py-2 px-3 text-center">${izin}</td>
+                            <td class="border border-slate-400 py-2 px-3 text-center font-bold bg-slate-50">${totalHadir} Hari</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        function exportReportCSV() {
+            if (!currentExportRows.length) return;
+            const csvContent = "data:text/csv;charset=utf-8,"
+                + currentExportRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            const type = document.getElementById('reportPeriodType').value;
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Laporan_Absensi_Kedungmakam_${type}_${getLocalDateString()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('File laporan CSV berhasil diunduh!', 'success');
+        }
+
+        /* ==========================================================================
+           10. PENGATURAN KANTOR & GANTI LOGO KABUPATEN TUBAN
+           ========================================================================== */
+        function loadSettingsForm() {
+            const s = getSettings();
+            document.getElementById('setLat').value = s.lat;
+            document.getElementById('setLng').value = s.lng;
+            document.getElementById('setRadius').value = s.radius;
+            document.getElementById('setMaxTime').value = s.maxTime;
+            document.getElementById('setAlamat').value = s.alamat;
+            document.getElementById('setNamaKades').value = s.namaKades;
+            document.getElementById('setNamaSekdes').value = s.namaSekdes;
+            document.getElementById('setAdminUsername').value = s.adminUsername;
+            document.getElementById('setAdminPassword').value = s.adminPassword;
+            applyLogoEverywhere();
+        }
+
+        function useCurrentLocationForOffice() {
+            if (!navigator.geolocation) {
+                showToast('Browser tidak mendukung GPS.', 'error');
+                return;
+            }
+            showToast('Mengambil titik koordinat GPS Anda saat ini...', 'info');
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    document.getElementById('setLat').value = pos.coords.latitude.toFixed(6);
+                    document.getElementById('setLng').value = pos.coords.longitude.toFixed(6);
+                    showToast('Koordinat GPS saat ini berhasil diisikan! Klik Simpan Pengaturan.', 'success');
+                },
+                () => {
+                    showToast('Gagal mengambil GPS. Pastikan izin lokasi aktif.', 'error');
+                },
+                { enableHighAccuracy: true }
+            );
+        }
+
+        document.getElementById('officeSettingsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const current = getSettings();
+            const updated = {
+                ...current,
+                lat: parseFloat(document.getElementById('setLat').value),
+                lng: parseFloat(document.getElementById('setLng').value),
+                radius: parseInt(document.getElementById('setRadius').value, 10),
+                maxTime: document.getElementById('setMaxTime').value,
+                alamat: document.getElementById('setAlamat').value.trim(),
+                namaKades: document.getElementById('setNamaKades').value.trim(),
+                namaSekdes: document.getElementById('setNamaSekdes').value.trim()
+            };
+            saveSettings(updated);
+            generateReport();
+            showToast('Pengaturan lokasi kantor & identitas surat berhasil disimpan!', 'success');
+        });
+
+        document.getElementById('adminPasswordForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const current = getSettings();
+            current.adminUsername = document.getElementById('setAdminUsername').value.trim();
+            current.adminPassword = document.getElementById('setAdminPassword').value.trim();
+            saveSettings(current);
+            showToast('Akun login Admin Desa berhasil diperbarui!', 'success');
+        });
+
+        function handleLogoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 1500000) {
+                showToast('Ukuran gambar terlalu besar (Maksimal 1.5 MB).', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const current = getSettings();
+                current.logoDataUrl = e.target.result;
+                saveSettings(current);
+                showToast('Logo Kabupaten Tuban berhasil diperbarui di seluruh aplikasi & kop laporan!', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function resetDefaultLogo() {
+            const current = getSettings();
+            current.logoDataUrl = DEFAULT_TUBAN_LOGO_SVG;
+            saveSettings(current);
+            showToast('Logo dikembalikan ke lambang bawaan Kabupaten Tuban.', 'info');
+        }
+
+        /* ==========================================================================
+           11. JAM REAL-TIME & FORMAT TANGGAL INDONESIA
+           ========================================================================== */
+        function formatIndoDate(dateStr) {
+            if (!dateStr) return '-';
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const dateObj = new Date(y, m - 1, d);
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            return `${days[dateObj.getDay()]}, ${d} ${months[m - 1]} ${y}`;
+        }
+
+        function startLiveClock() {
+            const update = () => {
+                const now = new Date();
+                const clockEl = document.getElementById('liveClock');
+                const dateEl = document.getElementById('liveDate');
+                if (clockEl) {
+                    clockEl.textContent = now.toTimeString().split(' ')[0];
+                }
+                if (dateEl) {
+                    dateEl.textContent = formatIndoDate(getLocalDateString(now));
+                }
+            };
+            update();
+            setInterval(update, 1000);
+        }
+
+        /* ==========================================================================
+           12. BOOTSTRAP APLIKASI SAAT HALAMAN DIMUAT
+           ========================================================================== */
+        window.addEventListener('DOMContentLoaded', () => {
+            seedInitialAttendanceIfEmpty();
+            applyLogoEverywhere();
+            startLiveClock();
+
+            const devId = getOrCreateBrowserDeviceId();
+            document.getElementById('loginDeviceIdBadge').textContent = devId;
+
+            // Pulihkan sesi login jika halaman di-refresh
+            const savedSession = sessionStorage.getItem('kedungmakam_session');
+            if (savedSession) {
+                try {
+                    currentUser = JSON.parse(savedSession);
+                    enterApp();
+                } catch (err) {
+                    sessionStorage.removeItem('kedungmakam_session');
+                }
+            }
+        });
+// 1. TEMPEL URL WEB APP APPS SCRIPT ANDA DI SINI:
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwa-_ftcwVBpoQd84qciYodqBMy4W9ZuIxQYY7xUjPb4g8MyLjMxANy8ggcRjOPGRHlow/exec";
+
+// Variabel penampung data terpusat (menggantikan localStorage)
+let dbPegawai = [];
+let dbAbsensi = [];
+let dbPengaturan = {
+  lat: "-6.885000",
+  lng: "111.662000",
+  radius: "100",
+  logo: ""
+};
+
+// 2. FUNGSI TARIK DATA DARI GOOGLE SHEETS (Jalankan saat halaman pertama dibuka)
+async function sinkronisasiDariSheets() {
+  try {
+    const response = await fetch(`${SCRIPT_URL}?action=getAllData`);
+    const result = await response.json();
+
+    if (result.status === "success") {
+      dbPegawai = result.pegawai || [];
+      dbAbsensi = result.absensi || [];
+      if (result.pengaturan) {
+        dbPengaturan = { ...dbPengaturan, ...result.pengaturan };
+      }
+      // Panggil fungsi render tampilan Anda di sini (misal: renderLogo(), renderTabelPegawai(), renderLaporan())
+      console.log("Berhasil terhubung ke Google Sheets!");
+    }
+  } catch (error) {
+    alert("Gagal terhubung ke database Google Sheets. Periksa koneksi internet atau SCRIPT_URL.");
+    console.error(error);
+  }
+}
+
+// 3. FUNGSI SIMPAN DATA PEGAWAI DARI MENU ADMIN KE GOOGLE SHEETS
+async function simpanPegawaiKeSheets(daftarPegawaiBaru) {
+  const response = await fetch(SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      action: "savePegawai",
+      list: daftarPegawaiBaru
+    })
+  });
+  const result = await response.json();
+  if (result.status === "success") {
+    await sinkronisasiDariSheets(); // Muat ulang data terbaru
+    alert("Data pegawai tersimpan di Google Sheets dan aktif di semua HP!");
+  }
+}
+
+// 4. FUNGSI SIMPAN PENGATURAN KANTOR & LOGO DARI MENU ADMIN KE GOOGLE SHEETS
+async function simpanPengaturanKeSheets(dataPengaturanBaru) {
+  const response = await fetch(SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      action: "savePengaturan",
+      data: dataPengaturanBaru
+    })
+  });
+  const result = await response.json();
+  if (result.status === "success") {
+    await sinkronisasiDariSheets();
+    alert("Pengaturan & logo tersimpan di Google Sheets!");
+  }
+}
+
+// 5. FUNGSI RESET KUNCI HP PEGAWAI DARI MENU ADMIN KE GOOGLE SHEETS
+async function resetHpPegawaiDiSheets(usernamePegawai) {
+  const response = await fetch(SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      action: "resetDevice",
+      username: usernamePegawai
+    })
+  });
+  const result = await response.json();
+  if (result.status === "success") {
+    await sinkronisasiDariSheets();
+    alert("Kunci HP pegawai berhasil direset di Google Sheets!");
+  }
+}
+    </script>
+</body>
+</html>
